@@ -19,7 +19,8 @@ class IprError(StandardError):
 
 class IprDownloader:
     def __init__(self):
-        os.environ['SHAPE_ENCODING'] = 'cp1250'
+        # os.environ['SHAPE_ENCODING'] = 'cp1250'
+        pass
 
     def filter(self, alike, crs, file_format):
         xml_file = "http://opendata.iprpraha.cz/feed.xml"
@@ -31,7 +32,7 @@ class IprDownloader:
 
         if alike:
             for item in data['feed']['entry']:
-                if (alike in item['title']): 
+                if (alike in item['title'] or alike in item['title'].lower()):
                     self.IprItems += [item['title']]
                     self.item_print(item, crs, file_format)
         else:
@@ -49,10 +50,10 @@ class IprDownloader:
 
     def subitems_Links(self, subdata, crs, file_format):
         if isinstance(subdata, list):
-#            for item in subdata:
-            item = subdata[0]# this will download only first item with all data
-            if (crs in item['category']['@label']):
-                self.print_subItem(item,file_format)
+            for item in subdata:
+                # item = subdata[0]# this will download only first item with all data
+                if (crs in item['category']['@label']):
+                    self.print_subItem(item,file_format)
         else:
             item = subdata
             if (crs in item['category']['@label']):
@@ -179,18 +180,18 @@ class IprDownloader:
 
             # copy input layer to output data source
             logger.info("Importing <{}>...".format(layer.GetName()))
-            olayer = odsn.CopyLayer(layer, layer.GetName() , options)
+            olayer = odsn.CopyLayer(layer, layer.GetName(), options)
             if olayer is None:
                 raise IprError("Unable to copy layer {}".format(layer.GetName()))
 
         # open input data source (directory with shapefile/gml/... files)
         idsn = ogr.Open(dsn_input, False) # read
-        if not idsn:
+        if idsn is None:
             raise IprError("Unable to open {}".format(dsn_input))
 
         # open output data source (PostGIS/SpatiaLite)
         odsn = ogr.Open(dsn_output, True) # write
-        if not odsn:
+        if odsn is None:
             raise IprError("Unable to open {}".format(dsn_output))
 
         for idx in range(idsn.GetLayerCount()):
