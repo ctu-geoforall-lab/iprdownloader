@@ -180,7 +180,8 @@ class IprDownloader:
 
             # copy input layer to output data source
             logger.info("Importing <{}>...".format(layer.GetName()))
-            olayer = odsn.CopyLayer(layer, layer.GetName(), options)
+            olayer = self._copy_layer(layer, options, odsn)
+
             if olayer is None:
                 raise IprError("Unable to copy layer {}".format(layer.GetName()))
 
@@ -197,3 +198,27 @@ class IprDownloader:
         for idx in range(idsn.GetLayerCount()):
             # process shp/gml file
             import_layer(idsn.GetLayer(idx), odsn, overwrite, crs)
+
+    def _copy_layer(self, layer, options, odsn):
+        ### olayer = odsn.CopyLayer(layer, layer.GetName(), options)
+        olayer = odsn.CreateLayer(layer.GetName(), layer.GetSpatialRef(),
+                                  layer.GetGeomType(), options)
+
+        # copy attributes
+        feat_defn = layer.GetLayerDefn()
+        for i in range(feat_defn.GetFieldCount()):
+            ifield = feat_defn.GetFieldDefn(i)
+            ofield = ogr.FieldDefn(ifield.GetNameRef(), ifield.GetType())
+            olayer.CreateField(ofield)
+
+        # copy features
+        olayer.StartTransaction()
+        feature = layer.GetNextFeature()
+        while feature:
+            ofeature = ogr.Feature(olayer.GetLayerDefn())
+            olayer.CreateFeature(ofeature)
+            feature = layer.GetNextFeature()
+
+        olayer.CommitTransaction()
+
+        return olayer
